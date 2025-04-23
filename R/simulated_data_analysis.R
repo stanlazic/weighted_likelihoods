@@ -7,10 +7,10 @@ library(ModelMetrics)
 source("functions.R")
 
 ## read in data
-d <- read.csv("../data/simulated_data.csv")
+d <- read.csv(file.path("..", "data", "simulated_data.csv"))
 
 ## compile model
-compiled_model <- cmdstan_model("../Stan/binary_model.stan")
+compiled_model <- cmdstan_model(file.path("..", "Stan", "binary_model.stan"))
 
 ## fit model with no weighting
 m1_unweighted <- compiled_model$sample(
@@ -99,7 +99,7 @@ x2_boundary_unweighted <- (-mean(post_unweighted$b0) - mean(post_unweighted$b1) 
 x2_boundary_weighted <- (-mean(post_weighted$b0) - mean(post_weighted$b1) * x1_seq) / mean(post_weighted$b2)
 
 
-pdf("../../LaTeX_template_files/Fig1.pdf", height = 10.2, width = 7.8)
+pdf("Fig1.pdf", height = 10.2, width = 7.8)
 par(
   las = 1,
   mfrow = c(3, 2),
@@ -214,40 +214,54 @@ dev.off()
 ## metrics
 ## ============================================================
 
+## Results for Table 1
+
 ## threshold for binary classification
 threshold <- 0.5
 
+## weak calibration (intercept and slope)
+cal_unweighted <- val.prob.ci.2(eta_unweighted_median, d$y)
+
 ## unweighted model metrics
-auc(d$y, eta_unweighted_median)
-brier(d$y, eta_unweighted_median)
-balanced_brier(d$y, eta_unweighted_median)
-1 - ce(d$y, as.numeric(eta_unweighted_median > threshold)) # accuracy
-balanced_accuracy(d$y, eta_unweighted_median)
-sensitivity(d$y, eta_unweighted_median)
-specificity(d$y, eta_unweighted_median)
-ppv(d$y, eta_unweighted_median)
-npv(d$y, eta_unweighted_median)
-f1Score(d$y, eta_unweighted_median)
-p4(d$y, eta_unweighted_median)
+c(
+    AUC = auc(d$y, eta_unweighted_median) %>% round(., 2), 
+    Accuracy = 1 - ce(d$y, as.numeric(eta_unweighted_median > threshold))  %>% round(., 2),
+    Balanced_accuracy = balanced_accuracy(d$y, eta_unweighted_median, threshold) %>% round(., 2),
+    Brier = brier(d$y, eta_unweighted_median) %>% round(., 2),
+    Balanced_Brier = balanced_brier(d$y, eta_unweighted_median) %>% round(., 2),
+    Sensitivity = sensitivity(d$y, eta_unweighted_median) %>% round(., 2),
+    specificity = specificity(d$y, eta_unweighted_median) %>% round(., 2),
+    PPV = ppv(d$y, eta_unweighted_median) %>% round(., 2),
+    NPV = npv(d$y, eta_unweighted_median) %>% round(., 2),
+    F1_score =  f1Score(d$y, eta_unweighted_median) %>% round(., 2),
+    P4_metric = p4(d$y, eta_unweighted_median) %>% round(., 2),
 ## mean calibration (calculated as MSE between actual and predicted proportions)
-sum((prop.table(table(d$y)) - prop.table(table(apply(ypred_unweighted, 1, which.max))))^2)
-## weak calibration
-val.prob.ci.2(eta_unweighted_median, d$y)
+    Mean_calibration = sum((prop.table(table(d$y)) - prop.table(table(apply(ypred_unweighted, 1, which.max))))^2)  %>% round(., 2),
+    cal_unweighted$stats["Intercept"] %>% round(., 2),
+    cal_unweighted$stats["Slope"] %>% round(., 2)
+) %>% t() %>% t()
+
 
 
 ## weighted model metrics
-auc(d$y, eta_weighted_median)
-brier(d$y, eta_weighted_median)
-balanced_brier(d$y, eta_weighted_median)
-1 - ce(d$y, as.numeric(eta_weighted_median > threshold)) # accuracy
-balanced_accuracy(d$y, eta_weighted_median)
-sensitivity(d$y, eta_weighted_median)
-specificity(d$y, eta_weighted_median)
-ppv(d$y, eta_weighted_median)
-npv(d$y, eta_weighted_median)
-f1Score(d$y, eta_weighted_median)
-p4(d$y, eta_weighted_median)
+
+## weak calibration (intercept and slope)
+cal_weighted <- val.prob.ci.2(eta_weighted_median, d$y)
+
+c(
+    AUC = auc(d$y, eta_weighted_median) %>% round(., 2), 
+    Accuracy = 1 - ce(d$y, as.numeric(eta_weighted_median > threshold))  %>% round(., 2),
+    Balanced_accuracy = balanced_accuracy(d$y, eta_weighted_median, threshold) %>% round(., 2),
+    Brier = brier(d$y, eta_weighted_median) %>% round(., 2),
+    Balanced_Brier = balanced_brier(d$y, eta_weighted_median) %>% round(., 2),
+    Sensitivity = sensitivity(d$y, eta_weighted_median) %>% round(., 2),
+    specificity = specificity(d$y, eta_weighted_median) %>% round(., 2),
+    PPV = ppv(d$y, eta_weighted_median) %>% round(., 2),
+    NPV = npv(d$y, eta_weighted_median) %>% round(., 2),
+    F1_score =  f1Score(d$y, eta_weighted_median) %>% round(., 2),
+    P4_metric = p4(d$y, eta_weighted_median) %>% round(., 2),
 ## mean calibration (calculated as MSE between actual and predicted proportions)
-sum((prop.table(table(d$y)) - prop.table(table(apply(ypred_weighted, 1, which.max))))^2)
-## weak calibration
-val.prob.ci.2(eta_weighted_median, d$y)
+    Mean_calibration = sum((prop.table(table(d$y)) - prop.table(table(apply(ypred_weighted, 1, which.max))))^2)  %>% round(., 2),
+    cal_weighted$stats["Intercept"] %>% round(., 2),
+    cal_weighted$stats["Slope"] %>% round(., 2)
+) %>% t() %>% t()

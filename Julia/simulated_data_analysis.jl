@@ -10,7 +10,7 @@ using Turing
 using Turing: @addlogprob!
 
 
-d = CSV.read("../data/simulated_data.csv", DataFrame)
+d = CSV.read(joinpath("..", "data", "simulated_data.csv"), DataFrame)
 
 
 # define model

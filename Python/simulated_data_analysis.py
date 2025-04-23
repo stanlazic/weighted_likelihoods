@@ -1,8 +1,9 @@
+import os
 import numpy as np
 import pymc as pm
 import pandas as pd
 
-d = pd.read_csv("../data/simulated_data.csv")
+d = pd.read_csv(os.path.join("..", "data", "simulated_data.csv"))
 
 with pm.Model() as unweighted_model:
     # Priors

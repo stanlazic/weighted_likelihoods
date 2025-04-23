@@ -2,12 +2,11 @@ library(tidyverse)
 library(cmdstanr)
 library(beeswarm)
 library(ModelMetrics)
-library(CalibrationCurves)
 
 source("functions.R")
 
 ## read in data
-d <- read.delim("../data/DILI_raw_data.txt")
+d <- read.delim(file.path("..", "data", "DILI_raw_data.txt"))
 
 ## center and scale continuous variables
 d2 <- data.frame(apply(dplyr::select(d, log10.cmax:ClogP), 2, scale))
@@ -16,7 +15,7 @@ d2 <- data.frame(apply(dplyr::select(d, log10.cmax:ClogP), 2, scale))
 X <- model.matrix(~ 0 + (Spher + BSEP + THP1 + Glu + Gal + ClogP + BA)^2 +
   log10.cmax, data = data.frame(d2, BA = d$BA))
 
-compiled_model <- cmdstan_model("../Stan/DILI_model.stan")
+compiled_model <- cmdstan_model(file.path("..", "Stan", "DILI_model.stan"))
 
 ## fit model on all data to get cutpoints for plots
 m1_unweighted <- compiled_model$sample(
@@ -193,7 +192,7 @@ for (i in 1:nrow(d)) {
 
 
 
-pdf("../../LaTeX_template_files/Fig2.pdf", height = 12, width = 8)
+pdf("Fig2.pdf", height = 12, width = 8)
 par(
   las = 1,
   mfrow = c(3, 2),
@@ -285,53 +284,63 @@ cm_unweighted %>%
 
 
 ## overall mean calibration (calculated as MSE between actual and predicted proportions)
-sum((prop.table(table(d$dili.sev)) - prop.table(table(apply(ypred_unweighted, 1, which.max))))^2)
-sum((prop.table(table(d$dili.sev)) - prop.table(table(apply(ypred_weighted, 1, which.max))))^2)
+sum((prop.table(table(d$dili.sev)) - prop.table(table(apply(ypred_unweighted, 1, which.max))))^2) %>% 
+  round(., 2)
+sum((prop.table(table(d$dili.sev)) - prop.table(table(apply(ypred_weighted, 1, which.max))))^2) %>%
+  round(., 2)
 
-## 1 vs. {2+3} unweighted 
-auc(d$dili.sev >= 2, eta_median_unweighted)
-1 - ce(d$dili.sev >= 2, as.numeric(eta_median_unweighted > cutpoints_unweighted[1]))
-balanced_accuracy(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1])
-sensitivity(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1])
-specificity(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1])
-ppv(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1])
-npv(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1])
-f1Score(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1])
-p4(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1])
 
+## Results for Table 2
+
+## 1 vs. {2+3} unweighted
+c(
+  AUC = auc(d$dili.sev >= 2, eta_median_unweighted) %>% round(., 2), 
+  Accuracy = 1 - ce(d$dili.sev >= 2, as.numeric(eta_median_unweighted > cutpoints_unweighted[1])) %>% round(., 2),
+  Balanced_accuracy = balanced_accuracy(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1]) %>% round(., 2),
+  Sensitivity = sensitivity(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1]) %>% round(., 2),
+  Specificity = specificity(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1]) %>% round(., 2),
+  PPV = ppv(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1]) %>% round(., 2),
+  NPV = npv(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1]) %>% round(., 2),
+  F1_score = f1Score(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1]) %>% round(., 2),
+  P4_metric = p4(d$dili.sev >= 2, eta_median_unweighted, cutpoints_unweighted[1]) %>% round(., 2)
+) %>% t() %>% t()
 
 ## 1 vs. {2+3} weighted
-auc(d$dili.sev >= 2, eta_median_weighted)
-1 - ce(d$dili.sev >= 2, as.numeric(eta_median_weighted > cutpoints_weighted[1]))
-balanced_accuracy(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1])
-sensitivity(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1])
-specificity(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1])
-ppv(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1])
-npv(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1])
-f1Score(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1])
-p4(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1])
-
+c(
+  AUC = auc(d$dili.sev >= 2, eta_median_weighted) %>% round(., 2),
+  Accuracy = 1 - ce(d$dili.sev >= 2, as.numeric(eta_median_weighted > cutpoints_weighted[1])) %>% round(., 2),
+  Balanced_accuracy = balanced_accuracy(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1]) %>% round(., 2),
+  Sensitvity = sensitivity(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1]) %>% round(., 2),
+  Specificity = specificity(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1]) %>% round(., 2),
+  PPV = ppv(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1]) %>% round(., 2),
+  NPV = npv(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1]) %>% round(., 2),
+  F1_score = f1Score(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1]) %>% round(., 2),
+  P4_metric = p4(d$dili.sev >= 2, eta_median_weighted, cutpoints_weighted[1]) %>% round(., 2)
+) %>% t() %>% t()
 
 ## {1+2} vs. 3 unweighted
-auc(d$dili.sev == 3, eta_median_unweighted)
-1 - ce(d$dili.sev == 3, as.numeric(eta_median_unweighted > cutpoints_unweighted[2]))
-balanced_accuracy(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2])
-sensitivity(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2])
-specificity(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2])
-ppv(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2])
-npv(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2])
-f1Score(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2])
-p4(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2])
+c(
+  AUC = auc(d$dili.sev ==  3, eta_median_unweighted) %>% round(., 2),
+  Accuracy = 1 - ce(d$dili.sev == 3, as.numeric(eta_median_unweighted > cutpoints_unweighted[2])) %>% round(., 2),
+  Balanced_accuracy = balanced_accuracy(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2]) %>% round(., 2),
+  Sensitvity = sensitivity(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2]) %>% round(., 2),
+  Specificity = specificity(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2]) %>% round(., 2),
+  PPV = ppv(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2]) %>% round(., 2),
+  NPV = npv(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2]) %>% round(., 2),
+  F1_score = f1Score(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2]) %>% round(., 2),
+  P4_metric = p4(d$dili.sev == 3, eta_median_unweighted, cutpoints_unweighted[2]) %>% round(., 2)
+) %>% t() %>% t()
 
 
 ## {1+2} vs. 3 weighted
-auc(d$dili.sev == 3, eta_median_weighted)
-1 - ce(d$dili.sev == 3, as.numeric(eta_median_weighted > cutpoints_unweighted[2]))
-balanced_accuracy(d$dili.sev == 3, eta_median_weighted, cutpoints_unweighted[2])
-sensitivity(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2])
-specificity(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2])
-ppv(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2])
-npv(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2])
-f1Score(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2])
-p4(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2])
-
+c(
+  AUC = auc(d$dili.sev == 3, eta_median_weighted) %>% round(., 2),
+  Accuracy = 1 - ce(d$dili.sev == 3, as.numeric(eta_median_weighted > cutpoints_unweighted[2])) %>% round(., 2),
+  Balanced_accuracy = balanced_accuracy(d$dili.sev == 3, eta_median_weighted, cutpoints_unweighted[2]) %>% round(., 2),
+  Sensitvity = sensitivity(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2]) %>% round(., 2),
+  Specificity = specificity(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2]) %>% round(., 2),
+  PPV = ppv(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2]) %>% round(., 2),
+  NPV = npv(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2]) %>% round(., 2),
+  F1_score = f1Score(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2]) %>% round(., 2),
+  P4_metric = p4(d$dili.sev == 3, eta_median_weighted, cutpoints_weighted[2]) %>% round(., 2)
+) %>% t() %>% t()
